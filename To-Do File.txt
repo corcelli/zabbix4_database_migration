@@ -1,0 +1,62 @@
+CREATE SERVER mongo_server
+FOREIGN DATA WRAPPER mongo_fdw
+OPTIONS (address '127.0.0.1', port '27017');
+
+CREATE USER MAPPING FOR zabbix4
+SERVER mongo_server;
+OPTIONS (username 'admin', password 'a_senha_do_mongodb');
+
+CREATE FOREIGN TABLE warehouse(
+_id NAME,
+warehouse_id int,
+warehouse_name text,
+warehouse_created timestamptz)
+SERVER mongo_server
+OPTIONS (database 'corcelli', collection 'warehouse');
+
+CREATE FOREIGN TABLE public.history_uint2(
+	_id NAME,
+    itemid bigint NOT NULL,
+    clock integer NOT NULL DEFAULT 0,
+    value numeric(20,0) NOT NULL DEFAULT '0'::numeric,
+    ns integer NOT NULL DEFAULT 0)
+SERVER mongo_server
+OPTIONS (database 'corcelli', collection 'history_uint2');
+
+
+create publication history_uint for table history_uint;
+
+create subscription history_uint connection 'host=localhost port=5432 dbname=zabbix4' publication history_uint;
+
+create publication trends for table trends;
+
+create subscription trends connection 'host=localhost port=5432 dbname=zabbix4' publication trends;
+
+create publication housekeeper for table housekeeper;
+
+create subscription housekeeper connection 'host=localhost port=5432 dbname=zabbix4' publication housekeeper;
+
+create publication history_text for table history_text;
+
+create subscription history_text connection 'host=localhost port=5432 dbname=zabbix4' publication history_text;
+
+create publication history for table history;
+
+create subscription history connection 'host=localhost port=5432 dbname=zabbix4' publication history;
+
+create publication trends_uint for table trends_uint;
+
+create subscription trends_uint connection 'host=localhost port=5432 dbname=zabbix4' publication trends_uint;
+
+create publication history_str for table history_str;
+
+create subscription history_str connection 'host=localhost port=5432 dbname=zabbix4' publication history_str;
+
+create publication tabelasfinais for table item_discovery, events, item_rtdata, alerts, event_tag;
+
+create subscription tabelasfinais connection 'host=localhost port=5432 dbname=zabbix4' publication tabelasfinais;
+
+drop subscription histor,history_str,history_text,history_uint,housekeeper,tabelasfinais,trends_uint;
+
+/usr/pgsql-11/bin/pg_dump --no-publications -v -Fc -d zabbix4 -T history_uint -T history -T history_text -T housekeeper -T trends -T trends_uint -T history_str -T events -T alerts -T event_tag -T item_discovery -T item_rtdata -f zabbix4_final.dump
+
